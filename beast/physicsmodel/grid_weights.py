@@ -46,7 +46,7 @@ def compute_bin_boundaries(tab):
     tab2[1:-1] = temp
     return tab2
 
-def compute_age_grid_weights(logages):
+def compute_age_grid_weights(logages, constantSFR=False):
     """ Computes the age weights to provide constant star formation rate
     (in linear age)
 
@@ -60,19 +60,24 @@ def compute_age_grid_weights(logages):
     age_weights : numpy vector
        total masses at each age for a constant SFR in linear age
     """
-    # ages need to be monotonically increasing
-    aindxs = np.argsort(logages)   
 
-    # Computes the bin boundaries in log
-    logages_bounds = compute_bin_boundaries(logages[aindxs])    
+    if constantSFR:
+        # ages need to be monotonically increasing
+        aindxs = np.argsort(logages)   
+        
+        # Computes the bin boundaries in log
+        logages_bounds = compute_bin_boundaries(logages[aindxs])    
+        
+        # initialize the age weights
+        age_weights = np.full(len(aindxs),0.0)
+        
+        # Returns the age weight as a numpy array
+        age_weights[aindxs] = np.diff(10**(logages_bounds))
+        
+        # return in the order that logages was passed
+    else:
+        age_weights = np.ones(len(logages))
 
-    # initialize the age weights
-    age_weights = np.full(len(aindxs),0.0)
-
-    # Returns the age weight as a numpy array
-    age_weights[aindxs] = np.diff(10**(logages_bounds))
-
-    # return in the order that logages was passed
     return age_weights    
 
 def compute_mass_grid_weights(masses):
