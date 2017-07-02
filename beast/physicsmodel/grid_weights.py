@@ -46,7 +46,7 @@ def compute_bin_boundaries(tab):
     tab2[1:-1] = temp
     return tab2
 
-def compute_age_grid_weights(logages, constantSFR=False):
+def compute_age_grid_weights(logages, constantSFR=True):
     """ Computes the age weights to provide constant star formation rate
     (in linear age)
 

@@ -98,7 +98,7 @@ def make_models(*args, **kwargs):
     Equivalent to using individual tasks as follow:
     project, noisefile, grid = project | t_isochrones(**iso_kwargs)
                                        | t_spectra(**spec_kwargs)
-                                       | t_priors()
+                                       | t_priors(**prior_kwargs)
                                        | t_seds(filters, **seds_kwargs)
 
     returns
@@ -134,11 +134,16 @@ def make_models(*args, **kwargs):
         seds_kwargs['add_spectral_properties_kwargs'] = datamodel.add_spectral_properties_kwargs
         spec_kwargs['add_spectral_properties_kwargs'] = datamodel.add_spectral_properties_kwargs
 
+    if hasattr(datamodel, 'prior_kwargs'):
+        prior_kwargs = datamodel.prior_kwargs
+    else:
+        prior_kwargs = dict(constantSFR=True)
+
     # make models if not there yet
     tasks_models = (t_project_dir,
                     t_isochrones(**iso_kwargs),
                     t_spectra(**spec_kwargs),
-                    t_priors(),
+                    t_priors(**prior_kwargs),
                     t_seds(datamodel.filters, **seds_kwargs))
 
     models = Pipeline('make_models', tasks_models)

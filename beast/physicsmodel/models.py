@@ -205,7 +205,7 @@ def make_priors(outname, specgrid, **kwargs):
 
     print('Make Prior Weights')
 
-    compute_age_mass_metallicity_weights(specgrid.grid)
+    compute_age_mass_metallicity_weights(specgrid.grid, **kwargs)
 
     #write to disk
     if hasattr(specgrid, 'writeHDF'):
