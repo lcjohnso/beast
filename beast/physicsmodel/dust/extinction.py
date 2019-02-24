@@ -13,7 +13,7 @@ from ...observationmodel import phot
 from ...config import __ROOT__
 
 __all__ = ['ExtinctionLaw', 'Cardelli89', 'Fitzpatrick99',
-           'Gordon03_SMCBar', 'Gordon16_RvFALaw']
+           'Gordon03_SMCBar', 'Gordon16_RvFALaw', 'J19_SMCBar']
 
 libdir = __ROOT__ + '/libs/'
 
@@ -566,6 +566,109 @@ class Gordon16_RvFALaw(ExtinctionLaw):
 
         Rv_B = self.BLaw.Rv
         return 1. / (f_A / Rv_A + (1 - f_A) / Rv_B)
+
+class J19_SMCBar(ExtinctionLaw):
+    """ 
+    Generalized FM90 extinction curve parameterization
+
+    """
+    def __init__(self):
+        self.name = 'Edited SMC Ext Curve'
+        self.Rv = 2.74
+
+    def function(self, lamb, Av=1.0, Rv=2.74, Alambda=True, **kwargs):
+        """
+        J19_SMCBar extinction law
+
+        Parameters
+        ----------
+        lamb: float or ndarray(dtype=float)
+            wavelength [in Angstroms] at which evaluate the law.
+
+        Av: float
+            desired A(V) (default 1.0)
+
+        Rv: float
+            desired R(V) (default 2.74)
+
+        Alambda: bool
+            if set returns +2.5*1./log(10.)*tau, tau otherwise
+
+        Returns
+        -------
+        r: float or ndarray(dtype=float)
+            attenuation as a function of wavelength
+            depending on Alambda option +2.5*1./log(10.)*tau,  or tau
+        """
+
+        # ensure the units are in angstrom
+        _lamb = units.Quantity(lamb, units.angstrom).value
+        #_lamb = val_in_unit('lamb', lamb, 'angstrom').magnitude
+
+        if isinstance(_lamb, float) or isinstance(_lamb, np.float_):
+            _lamb = np.asarray([lamb])
+        else:
+            _lamb = lamb[:]
+
+        fm_params=[-4.959, 2.264, 0.389, 0.461, 4.6, 1.0]
+        c1 = fm_params[0] / Rv
+        c2 = fm_params[1] / Rv
+        c3 = fm_params[2] / Rv
+        c4 = fm_params[3] / Rv
+        x0 = fm_params[4]
+        gamma = fm_params[5]
+
+        x = 1.e4 / _lamb
+        k = np.zeros(np.size(x))
+
+        # UV part
+        xcutuv = 10000.0 / 2700.
+        xspluv = 10000.0 / np.array([2700., 2600.])
+
+        ind = np.where(x >= xcutuv)
+        if np.size(ind) > 0:
+            k[ind] = 1.0 + c1 + (c2 * x[ind]) + c3 * ((x[ind]) ** 2) / \
+                     ( ((x[ind]) ** 2 - (x0 ** 2)) ** 2 + (gamma ** 2) *
+                       ((x[ind]) ** 2 ))
+            yspluv = 1.0 + c1 + (c2 * xspluv) + c3 * ((xspluv) ** 2) / \
+                     ( ((xspluv) ** 2 - (x0 ** 2)) ** 2 + (gamma ** 2) *
+                       ((xspluv) ** 2 ))
+            
+        # FUV portion  
+        ind = np.where(x >= 5.9)
+        if np.size(ind) > 0:
+            k[ind] += c4 * (0.5392 * ((x[ind] - 5.9) ** 2) +
+                            0.05644 * ((x[ind] - 5.9) ** 3))
+
+        # Opt/NIR part
+        ind = np.where(x < xcutuv)
+        if np.size(ind) > 0:
+
+            # Previous: Gordon+03
+            #xsplopir = np.zeros(9)
+            #xsplopir[0] = 0.0
+            #xsplopir[1: 10] = 1.0 / np.array([2.198, 1.65, 1.25, 0.81,
+            #                                  0.65, 0.55, 0.44, 0.37])
+            #ysplopir = np.array([0.0, 0.11, 0.169, 0.25, 0.567,
+            #                     0.801, 1.00, 1.374, 1.672])
+
+            # Current: SMIDGE
+            # slam = np.array([2700., 3100., 4500., 5300., 7700., 10750., 14500.])
+            # alam_result = np.array([2.55, 1.85, 1.27, 1.05, 0.66, 0.37, 0.21])
+            xsplopir = np.zeros(7)
+            xsplopir[0] = 0.0
+            xsplopir[1:8] = 1.0 / np.array([1.45, 1.075, 0.77, 0.53, 0.45, 0.31])
+            ysplopir = np.array([0.0, 0.21, 0.37, 0.66, 1.05, 1.27, 1.85])
+
+            tck = interpolate.splrep(np.hstack([xsplopir, xspluv]),
+                                     np.hstack([ysplopir, yspluv]), k=3)
+            k[ind] = interpolate.splev(x[ind], tck)
+
+        if (Alambda):
+            return(k * Av)
+        else:
+            return(k * Av * (np.log(10.) * 0.4 ))
+
 
 if __name__ == "__main__":
 
